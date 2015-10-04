@@ -4,11 +4,21 @@
 ; core configuration options
 ;
 
+
+bluecoat_url=
+
+
+bluecoat_api_key=
+
+
+bluecoat_owner=admin
+
+
 ;
 ; listener_port
 ; port to listen for incoming feed requests
 ;
-listener_port=2371
+listener_port=2372
 
 ;
 ; listener_address
@@ -63,3 +73,4 @@ carbonblack_server_sslverify=0
 ; enables various debug output
 ;
 debug=1
+
