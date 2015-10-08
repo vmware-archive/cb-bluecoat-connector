@@ -34,18 +34,29 @@ class BluecoatProvider(BinaryAnalysisProvider):
         self.check_url_format_str = "%srapi/samples?md5=%%s" % (self.bluecoat_url)
         self.get_tasks_url_format_str = "%srapi/samples/%%d/tasks" % self.bluecoat_url
 
-
     def check_result_for(self, md5sum, sample_id=None):
-
+        print "check_result_for"
         try:
-
             if not sample_id:
+                #
+                # if no sample_id then try md5sum
+                #
                 url = self.check_url_format_str % md5sum
 
+                #
+                # Send the get request
+                #
                 resp = requests.get(url, headers=self.headers, verify=False)
+                
+                #
+                # Parse the results
+                #
                 sample_results = resp.json()
                 result_count = sample_results.get('results_count', 0)
                 if result_count == 0:
+                    #
+                    # if there are no results return None
+                    #
                     return None
 
                 result = sample_results.get('results', [{}])[0]
@@ -56,34 +67,76 @@ class BluecoatProvider(BinaryAnalysisProvider):
             log.warn("%s | %d" % (url, resp.status_code))
 
             tasks_results = resp.json()
-            task_result = tasks_results.get('results', [{}])[0]
-            task_id = task_result.get('tasks_task_id', -1)
-
-            if not task_id: # do it over basically
+            #
+            # Inside of tasks_results if there are none then it will be an empty list
+            #
+            task_result = tasks_results.get('results', [{}])
+            if len(task_result) == 0:
                 return None
 
+            #
+            # Here task_result is a [{}]
+            #
+            task_result = task_result[0]
+
+            task_id = task_result.get('tasks_task_id', -1)
+            if not task_id: # 
+                #
+                # Do it over basically.
+                # No result found, return None
+                # 
+                return None
+
+            #
+            # Get the current task state
+            #
             task_status = task_result.get('task_state_state', 'UNKNOWN')
             if task_status == 'CORE_COMPLETE':
+                
+                #
+                # Pull the score from json
+                #
                 score = task_result['tasks_global_risk_score']
-
-                task_link = "%sanalysis_center/view_task/%d" % (self.bluecoat_url, task_id)
 
                 log.info("Binary %s score %d" % (md5sum, score))
 
-                if score > 10:
+                #
+                # Hardcoded value for potential malware
+                #
+                if score > 8:
                     malware_result = "Potential Malware"
                 else:
                     malware_result = "Benign"
+
+                #
+                # Normalize score by just multiplying
+                #
+                score *= 10
+
+                #
+                # generate the task link to send back with the Analysis Result
+                #
+                task_link = "%sanalysis_center/view_task/%d" % (self.bluecoat_url, task_id)
 
                 return AnalysisResult(message=malware_result, extended_message="",
                                       link=task_link,
                                       score=score)
             else:
-                raise AnalysisTemporaryError(message="No task result for %d (%d)" % (sample_id, task_id), retry_in=120)
-        except:
-            pass
+                #
+                # Since this is called from a quick scan thread just return None
+                # if the bluecoat provider returns anything besides CORE_COMPLETE
+                #
+                return None
+        
+        except Exception as e:
+            print traceback.format_exc()
+            log.error("check_result_for: an exception occurred while querying bluecoat for %s: %s" % (md5sum, e))
+            log.error(traceback.format_exc())
+            raise AnalysisTemporaryError(message=e.message, retry_in=120)
+            
 
     def analyze_binary(self, md5sum, binary_file_stream):
+        print "analyze_binary"
         try:
             description = 'Uploaded from Carbon Black'
             label = 'cb-%s' % md5sum
@@ -91,36 +144,53 @@ class BluecoatProvider(BinaryAnalysisProvider):
             sample_file = {'file': binary_file_stream}
             form_data = {'owner': self.bluecoat_owner, 'description': description, 'label': label}
 
+            #
+            # Upload the binary
+            #
             resp = requests.post(self.sample_upload_url, files=sample_file, data=form_data, headers=self.headers, verify=False)
-            log.warn("%s | %d" % (self.sample_upload_url, resp.status_code))
+            log.info("%s | %d" % (self.sample_upload_url, resp.status_code))
+
+            if resp.status_code != 200:
+                raise AnalysisTemporaryError(message=resp.content, retry_in=120)
+            
+            #
+            # Check the response of the upload
+            #
             sample_upload_data = resp.json()
             sample_result = sample_upload_data.get('results', [{}])[0]
 
-            # CREATE TASK
+            #
+            # Now create the task to analyze the binary
+            #
             sample_id = sample_result.get('samples_sample_id')
             task_data = {"sample_id":  sample_id, "env": "ivm"}
+
+            #
+            # Send the Http Post to create the task
+            #
             resp = requests.post(self.create_task_url, data=task_data, headers=self.headers, verify=False)
-            log.warn("%s | %d" % (self.create_task_url, resp.status_code))
+            log.info("%s | %d" % (self.create_task_url, resp.status_code))
 
             if resp.status_code != 200:
                 raise AnalysisTemporaryError(message=resp.content, retry_in=120)
 
-            retries = 10
-            sleep_amount = 30
-            while retries:
-                sleep(sleep_amount)
-                result = self.check_result_for(md5sum, sample_id=sample_id)
-                if result:
-                    return result
-                retries -= 1
+            #
+            # Try to get the results if we can
+            #
+            retries = 20
+                while retries:
+                    sleep(10)
+                    result = self.check_result_for(md5sum, event_id=event_id)
+                    if result:
+                        return result
+                    retries -= 1
 
-                # after the first time, sleep 15
-                sleep_amount = 15
-
-            raise AnalysisTemporaryError(message="Maximum retries (20) exceeded submitting to Cyphort", retry_in=120)
+            raise AnalysisTemporaryError(message="Maximum retries (20) exceeded submitting to Bluecoat", retry_in=120)
 
         except:
-            traceback.print_exc()
+            print traceback.format_exc()
+            log.error("analyze_binary: an exception occurred while submitting to bluecoat for %s: %s" % (md5sum, e))
+            log.error(traceback.format_exc())
             raise AnalysisTemporaryError(traceback.format_exc(), retry_in=120)
 
 
@@ -128,19 +198,12 @@ class BluecoatProvider(BinaryAnalysisProvider):
 class BluecoatConnector(DetonationDaemon):
     @property
     def filter_spec(self):
-        # TODO: finish
-
-        # TODO -- DON'T HARDCODE THIS IN THE ACTUAL CODE
-
         filters = []
         max_module_len = 10 * 1024 * 1024
-
-#        filters.append('(os_type:windows OR os_type:osx) orig_mod_len:[1 TO %d]' % max_module_len)
         filters.append('os_type:windows orig_mod_len:[1 TO %d]' % max_module_len)
         additional_filter_requirements = self.get_config_string("binary_filter_query", None)
         if additional_filter_requirements:
             filters.append(additional_filter_requirements)
-
         return ' '.join(filters)
 
     @property
@@ -156,9 +219,8 @@ class BluecoatConnector(DetonationDaemon):
         return bluecoat_provider
 
     def get_metadata(self):
-        # TODO: finish
         return cbint.utils.feed.generate_feed(self.name, summary="Bluecoat Malware Analysis Appliance Detonation",
-                        tech_data="TECH DATA PLACEHOLDER",
+                        tech_data="There are no requirements to share any data with Carbon Black to use this feed.",
                         provider_url="http://www.bluecoat.com",
                         icon_path='/usr/share/cb/integrations/bluecoat/bluecoat-logo.png',
                         display_name="Bluecoat", category="Connectors")
@@ -169,7 +231,6 @@ class BluecoatConnector(DetonationDaemon):
         self.bluecoat_url = self.get_config_string("bluecoat_url", None)
         self.bluecoat_api_key = self.get_config_string("bluecoat_api_key", None)
         self.bluecoat_owner = self.get_config_string("bluecoat_owner", "admin")
-
         return True
 
 
