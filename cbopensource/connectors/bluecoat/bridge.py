@@ -13,7 +13,6 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 log = logging.getLogger(__name__)
 
-
 class BluecoatProvider(BinaryAnalysisProvider):
     def __init__(self, name, bluecoat_url, bluecoat_api_key, bluecoat_owner):
         super(BluecoatProvider, self).__init__(name)
@@ -34,8 +33,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
         self.check_url_format_str = "%srapi/samples?md5=%%s" % (self.bluecoat_url)
         self.get_tasks_url_format_str = "%srapi/samples/%%d/tasks" % self.bluecoat_url
 
-    def check_result_for(self, md5sum, sample_id=None):
-        print "check_result_for"
+    def check_result_for(self, md5sum, sample_id = None):
         try:
             if not sample_id:
                 #
@@ -82,8 +80,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
             task_id = task_result.get('tasks_task_id', -1)
             if not task_id: # 
                 #
-                # Do it over basically.
-                # No result found, return None
+                # No task associated with this sample id
                 # 
                 return None
 
@@ -136,7 +133,6 @@ class BluecoatProvider(BinaryAnalysisProvider):
             
 
     def analyze_binary(self, md5sum, binary_file_stream):
-        print "analyze_binary"
         try:
             description = 'Uploaded from Carbon Black'
             label = 'cb-%s' % md5sum
@@ -178,12 +174,12 @@ class BluecoatProvider(BinaryAnalysisProvider):
             # Try to get the results if we can
             #
             retries = 20
-                while retries:
-                    sleep(10)
-                    result = self.check_result_for(md5sum, event_id=event_id)
-                    if result:
-                        return result
-                    retries -= 1
+            while retries:
+                sleep(10)
+                result = self.check_result_for(md5sum, sample_id=sample_id)
+                if result:
+                    return result
+                retries -= 1
 
             raise AnalysisTemporaryError(message="Maximum retries (20) exceeded submitting to Bluecoat", retry_in=120)
 
