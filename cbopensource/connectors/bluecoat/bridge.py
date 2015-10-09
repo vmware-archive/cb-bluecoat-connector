@@ -126,7 +126,6 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 return None
         
         except Exception as e:
-            print traceback.format_exc()
             log.error("check_result_for: an exception occurred while querying bluecoat for %s: %s" % (md5sum, e))
             log.error(traceback.format_exc())
             raise AnalysisTemporaryError(message=e.message, retry_in=120)
@@ -184,7 +183,6 @@ class BluecoatProvider(BinaryAnalysisProvider):
             raise AnalysisTemporaryError(message="Maximum retries (20) exceeded submitting to Bluecoat", retry_in=120)
 
         except:
-            print traceback.format_exc()
             log.error("analyze_binary: an exception occurred while submitting to bluecoat for %s: %s" % (md5sum, e))
             log.error(traceback.format_exc())
             raise AnalysisTemporaryError(traceback.format_exc(), retry_in=120)
