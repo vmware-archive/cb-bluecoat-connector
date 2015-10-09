@@ -33,6 +33,9 @@ class BluecoatProvider(BinaryAnalysisProvider):
         self.check_url_format_str = "%srapi/samples?md5=%%s" % (self.bluecoat_url)
         self.get_tasks_url_format_str = "%srapi/samples/%%d/tasks" % self.bluecoat_url
 
+    def scale_score(self, value, base_min, base_max, limit_min, limit_max):
+        return ((limit_max - limit_min) * (value - base_min) / (base_max - base_min)) + limit_min
+
     def check_result_for(self, md5sum, sample_id = None):
         try:
             if not sample_id:
@@ -105,6 +108,11 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 else:
                     malware_result = "Benign"
 
+                #
+                # TODO: Intially thought the scale was -100, 100
+                #
+                #self.scale_score(score, 0, 10, -100, 100)
+                
                 #
                 # Normalize score by just multiplying
                 #
@@ -182,7 +190,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
 
             raise AnalysisTemporaryError(message="Maximum retries (20) exceeded submitting to Bluecoat", retry_in=120)
 
-        except:
+        except Exception as e:
             log.error("analyze_binary: an exception occurred while submitting to bluecoat for %s: %s" % (md5sum, e))
             log.error(traceback.format_exc())
             raise AnalysisTemporaryError(traceback.format_exc(), retry_in=120)
