@@ -46,6 +46,7 @@ When you contact Bit9 Developer Relations Technical Support with an issue, pleas
 
 * Your name, company name, telephone number, and e-mail address
 * Product name/version, CB Server version, CB Sensor version
+* Connector versions, especially if you are asking about a specific connector.
 * Hardware configuration of the Carbon Black Server or computer (processor, memory, and RAM)
 * For documentation issues, specify the version of the manual you are using.
 * Action causing the problem, error message returned, and event log output (as appropriate)
