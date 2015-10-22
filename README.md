@@ -2,7 +2,7 @@
 
 ## Installation Quickstart
 
-As root on your Carbon Black or other RPM based 64-bit Linux distribution server:
+As *root* on your Carbon Black or other RPM based 64-bit Linux distribution server:
 ```
 cd /etc/yum.repos.d
 curl -O https://opensource.carbonblack.com/release/x86_64/CbOpenSource.repo
