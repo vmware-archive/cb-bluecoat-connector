@@ -149,7 +149,7 @@ scripts = {
 
 setup(
     name='python-cb-bluecoat-connector',
-    version='1.0',
+    version='1.1',
     packages=['cbopensource', 'cbopensource.connectors', 'cbopensource.connectors.bluecoat'],
     url='https://github.com/carbonblack/cb-bluecoat-connector',
     license='MIT',
