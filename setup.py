@@ -103,8 +103,8 @@ class install_cb(Command):
             self.mkpath(dir)
 
             data = os.path.join('dist', scriptname)
-            (out, _) = self.copy_file(data, dir, preserve_mode=True)
-            self.outfiles.append(out)
+            out = self.copy_tree(data, dir, preserve_mode=True)
+            self.outfiles.extend(out)
 
         if self.record:
             outputs = self.get_outputs()
@@ -116,7 +116,6 @@ class install_cb(Command):
                          (self.record, outputs),
                          "writing list of installed files to '%s'" %
                          self.record)
-
 
     def get_inputs(self):
         return self.data_files or []
@@ -143,20 +142,20 @@ data_files.append('scripts/cb-bluecoat-connector')
 scripts = {
     'cb-bluecoat-connector': {
         'spec': 'cb-bluecoat-connector.spec',
-        'dest': '/usr/share/cb/integrations/bluecoat/cb-bluecoat-connector'
+        'dest': '/usr/share/cb/integrations/bluecoat/bin/'
     }
 }
 
 setup(
     name='python-cb-bluecoat-connector',
-    version='1.1',
+    version='1.2',
     packages=['cbopensource', 'cbopensource.connectors', 'cbopensource.connectors.bluecoat'],
     url='https://github.com/carbonblack/cb-bluecoat-connector',
     license='MIT',
-    author='Bit9 + Carbon Black Developer Network',
-    author_email='dev-support@bit9.com',
+    author='Carbon Black Developer Network',
+    author_email='dev-support@carbonblack.com',
     description=
-        'Connector between Carbon Black and Bluecoat',
+        'Connector between Carbon Black and bluecoat',
     data_files=data_files,
     classifiers=[
         'Development Status :: 4 - Beta',

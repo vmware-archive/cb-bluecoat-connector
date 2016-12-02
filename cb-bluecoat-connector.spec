@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 a = Analysis(['scripts/cb-bluecoat-connector'],
              pathex=['.'],
              hiddenimports=['unicodedata'],
@@ -7,11 +6,16 @@ a = Analysis(['scripts/cb-bluecoat-connector'],
 pyz = PYZ(a.pure)
 exe = EXE(pyz,
           a.scripts,
-          a.binaries,
-          a.zipfiles,
-          a.datas,
+          exclude_binaries=True,
           name='cb-bluecoat-connector',
           debug=False,
-          strip=False,
+          strip=None,
           upx=True,
           console=True )
+coll = COLLECT(exe,
+               a.binaries,
+               a.zipfiles,
+               a.datas,
+               strip=None,
+               upx=True,
+               name='cb-bluecoat-connector')

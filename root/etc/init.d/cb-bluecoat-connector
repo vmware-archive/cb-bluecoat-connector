@@ -10,7 +10,7 @@
 # Source function library.
 . /etc/rc.d/init.d/functions
 
-exec="/usr/share/cb/integrations/bluecoat/cb-bluecoat-connector"
+exec="/usr/share/cb/integrations/bluecoat/bin/cb-bluecoat-connector"
 prog="cb-bluecoat-connector"
 pidfile="/var/run/cb/integrations/bluecoat.pid"
 
