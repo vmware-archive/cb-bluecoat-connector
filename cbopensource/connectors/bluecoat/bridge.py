@@ -2,9 +2,7 @@ from cbint.utils.detonation import DetonationDaemon, ConfigurationError
 from cbint.utils.detonation.binary_analysis import (BinaryAnalysisProvider, AnalysisPermanentError,
                                                     AnalysisTemporaryError, AnalysisResult)
 import cbint.utils.feed
-import time
 import logging
-import os
 import requests
 import traceback
 from time import sleep
@@ -198,6 +196,11 @@ class BluecoatProvider(BinaryAnalysisProvider):
 
 
 class BluecoatConnector(DetonationDaemon):
+
+    @property
+    def integration_name(self):
+        return 'Cb BlueCoat Connector 1.2.3'
+
     @property
     def filter_spec(self):
         filters = []
