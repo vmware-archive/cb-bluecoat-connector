@@ -66,6 +66,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
 
             url = self.get_tasks_url_format_str % sample_id
             resp = self.session.get(url, headers=self.headers, verify=False)
+
             log.warn("%s | %d" % (url, resp.status_code))
 
             tasks_results = resp.json()
@@ -151,7 +152,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
             #
             # Upload the binary
             #
-            resp = requests.post(self.sample_upload_url, files=sample_file, data=form_data, headers=self.headers, verify=False)
+            resp = self.session.post(self.sample_upload_url, files=sample_file, data=form_data, headers=self.headers, verify=False)
             log.info("%s | %d" % (self.sample_upload_url, resp.status_code))
 
             if resp.status_code != 200:
@@ -172,7 +173,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
             #
             # Send the Http Post to create the task
             #
-            resp = requests.post(self.create_task_url, data=task_data, headers=self.headers, verify=False)
+            resp = self.session.post(self.create_task_url, data=task_data, headers=self.headers, verify=False)
             log.info("%s | %d" % (self.create_task_url, resp.status_code))
 
             if resp.status_code != 200:

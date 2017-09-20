@@ -64,13 +64,3 @@ carbonblack_server_token=
 ;
 carbonblack_server_sslverify=0
 
-
-;
-; debugging options
-;
-
-; debug
-; enables various debug output
-;
-debug=1
-
