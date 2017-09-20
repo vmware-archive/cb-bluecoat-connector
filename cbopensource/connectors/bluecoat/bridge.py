@@ -6,6 +6,7 @@ import logging
 import requests
 import traceback
 from time import sleep
+from cbint.utils.tls import get_tlsv1_2_session
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 
@@ -31,6 +32,8 @@ class BluecoatProvider(BinaryAnalysisProvider):
         self.check_url_format_str = "%srapi/samples?md5=%%s" % (self.bluecoat_url)
         self.get_tasks_url_format_str = "%srapi/samples/%%d/tasks" % self.bluecoat_url
 
+        self.session = get_tlsv1_2_session()
+
     def scale_score(self, value, base_min, base_max, limit_min, limit_max):
         return ((limit_max - limit_min) * (value - base_min) / (base_max - base_min)) + limit_min
 
@@ -45,7 +48,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 #
                 # Send the get request
                 #
-                resp = requests.get(url, headers=self.headers, verify=False)
+                resp = self.session.get(url, headers=self.headers, verify=False)
                 
                 #
                 # Parse the results
@@ -62,7 +65,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 sample_id = result.get('samples_sample_id', -1)
 
             url = self.get_tasks_url_format_str % sample_id
-            resp = requests.get(url, headers=self.headers, verify=False)
+            resp = self.session.get(url, headers=self.headers, verify=False)
             log.warn("%s | %d" % (url, resp.status_code))
 
             tasks_results = resp.json()
@@ -199,7 +202,7 @@ class BluecoatConnector(DetonationDaemon):
 
     @property
     def integration_name(self):
-        return 'Cb BlueCoat Connector 1.2.5'
+        return 'Cb BlueCoat Connector 1.2.6'
 
     @property
     def filter_spec(self):

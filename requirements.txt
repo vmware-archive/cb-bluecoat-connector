@@ -1,4 +1,4 @@
 cbfeeds==0.8.0
-cbint==0.8.11
+cbint==0.9.1
 pyinstaller==3.1.1
 
