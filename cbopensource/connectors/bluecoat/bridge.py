@@ -203,7 +203,7 @@ class BluecoatConnector(DetonationDaemon):
 
     @property
     def integration_name(self):
-        return 'Cb BlueCoat Connector 1.2.6'
+        return 'Cb BlueCoat Connector 1.2.7'
 
     @property
     def filter_spec(self):
