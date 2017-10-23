@@ -1,5 +1,10 @@
 # Carbon Black - Bluecoat Connector
 
+## Legacy/Deprecated
+
+Future versions of Bluecoat MAA will not be supported.  This connector is now in legacy/deprecated status and will no longer
+be maintained.
+
 ## Installation Quickstart
 
 As **root** on your Carbon Black or other RPM based 64-bit Linux distribution server:
