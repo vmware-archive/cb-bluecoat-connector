@@ -13,6 +13,13 @@ bluecoat_api_key=
 
 bluecoat_owner=admin
 
+;
+; If score is less than or equal to bluecoat_min_score_threshold, score will be set to 0.  This is to reduce
+; the amount of feed entries.  Bluecoat scores benign binaries non-zero values, which will show up in the feed.
+; This parameter will reduce the number of benign binaries in the feed.
+;
+bluecoat_min_score_threshold=50
+
 
 ;
 ; listener_port
@@ -38,12 +45,6 @@ feed_host=127.0.0.1
 ; Additional query options to filter only binaries of interest to the Bluecoat connector
 ;
 binary_filter_query=is_executable_image:true is_64bit:false -digsig_publisher:"Microsoft Corporation"
-
-;
-; legacy_feed_directory
-; Uncomment this and set to the directory containing feed reports from an earlier version of this connector
-;
-;legacy_feed_directory=
 
 ;
 ; Carbon Black Enterprise Server options

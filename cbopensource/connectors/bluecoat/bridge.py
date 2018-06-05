@@ -12,8 +12,9 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 log = logging.getLogger(__name__)
 
+
 class BluecoatProvider(BinaryAnalysisProvider):
-    def __init__(self, name, bluecoat_url, bluecoat_api_key, bluecoat_owner):
+    def __init__(self, name, bluecoat_url, bluecoat_api_key, bluecoat_owner, bluecoat_min_score_threshold):
         super(BluecoatProvider, self).__init__(name)
 
         # TODO -- pass in whether or not to verify ???
@@ -24,6 +25,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
 
         self.bluecoat_api_key = bluecoat_api_key
         self.bluecoat_owner = bluecoat_owner
+        self.bluecoat_min_score_threshold = bluecoat_min_score_threshold
         self.headers = {'X-API-TOKEN': self.bluecoat_api_key}
 
         self.sample_upload_url = "%srapi/samples/basic" % self.bluecoat_url
@@ -37,7 +39,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
     def scale_score(self, value, base_min, base_max, limit_min, limit_max):
         return ((limit_max - limit_min) * (value - base_min) / (base_max - base_min)) + limit_min
 
-    def check_result_for(self, md5sum, sample_id = None):
+    def check_result_for(self, md5sum, sample_id=None):
         try:
             if not sample_id:
                 #
@@ -49,7 +51,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 # Send the get request
                 #
                 resp = self.session.get(url, headers=self.headers, verify=False)
-                
+
                 #
                 # Parse the results
                 #
@@ -83,7 +85,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
             task_result = task_result[0]
 
             task_id = task_result.get('tasks_task_id', -1)
-            if not task_id: # 
+            if not task_id:  #
                 #
                 # No task associated with this sample id
                 # 
@@ -94,7 +96,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
             #
             task_status = task_result.get('task_state_state', 'UNKNOWN')
             if task_status == 'CORE_COMPLETE':
-                
+
                 #
                 # Pull the score from json
                 #
@@ -103,22 +105,19 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 log.info("Binary %s score %d" % (md5sum, score))
 
                 #
-                # Hardcoded value for potential malware
-                #
-                if score > 8:
-                    malware_result = "Potential Malware"
-                else:
-                    malware_result = "Benign"
-
-                #
-                # TODO: Intially thought the scale was -100, 100
-                #
-                #self.scale_score(score, 0, 10, -100, 100)
-                
-                #
                 # Normalize score by just multiplying
                 #
                 score *= 10
+
+                #
+                # check against min_score_threshold.  If score is less than or equal to threshold then mark score as 0
+                # We do this because bluecoat will give results of 10-40 for binaries that are benign.
+                #
+                if score <= self.bluecoat_min_score_threshold:
+                    score = 0
+                    malware_result = "Benign"
+                else:
+                    malware_result = "Potential Malware"
 
                 #
                 # generate the task link to send back with the Analysis Result
@@ -134,12 +133,11 @@ class BluecoatProvider(BinaryAnalysisProvider):
                 # if the bluecoat provider returns anything besides CORE_COMPLETE
                 #
                 return None
-        
+
         except Exception as e:
             log.error("check_result_for: an exception occurred while querying bluecoat for %s: %s" % (md5sum, e))
             log.error(traceback.format_exc())
             raise AnalysisTemporaryError(message=e.message, retry_in=120)
-            
 
     def analyze_binary(self, md5sum, binary_file_stream):
         try:
@@ -152,12 +150,16 @@ class BluecoatProvider(BinaryAnalysisProvider):
             #
             # Upload the binary
             #
-            resp = self.session.post(self.sample_upload_url, files=sample_file, data=form_data, headers=self.headers, verify=False)
+            resp = self.session.post(self.sample_upload_url,
+                                     files=sample_file,
+                                     data=form_data,
+                                     headers=self.headers,
+                                     verify=False)
             log.info("%s | %d" % (self.sample_upload_url, resp.status_code))
 
             if resp.status_code != 200:
                 raise AnalysisTemporaryError(message=resp.content, retry_in=120)
-            
+
             #
             # Check the response of the upload
             #
@@ -168,7 +170,7 @@ class BluecoatProvider(BinaryAnalysisProvider):
             # Now create the task to analyze the binary
             #
             sample_id = sample_result.get('samples_sample_id')
-            task_data = {"sample_id":  sample_id, "env": "ivm"}
+            task_data = {"sample_id": sample_id, "env": "ivm"}
 
             #
             # Send the Http Post to create the task
@@ -198,12 +200,11 @@ class BluecoatProvider(BinaryAnalysisProvider):
             raise AnalysisTemporaryError(traceback.format_exc(), retry_in=120)
 
 
-
 class BluecoatConnector(DetonationDaemon):
 
     @property
     def integration_name(self):
-        return 'Cb BlueCoat Connector 1.2.7'
+        return 'Cb BlueCoat Connector 1.2.8'
 
     @property
     def filter_spec(self):
@@ -224,15 +225,19 @@ class BluecoatConnector(DetonationDaemon):
         return 4
 
     def get_provider(self):
-        bluecoat_provider = BluecoatProvider(self.name, self.bluecoat_url, self.bluecoat_api_key, self.bluecoat_owner)
+        bluecoat_provider = BluecoatProvider(self.name,
+                                             self.bluecoat_url,
+                                             self.bluecoat_api_key,
+                                             self.bluecoat_owner,
+                                             self.bluecoat_min_score_threshold)
         return bluecoat_provider
 
     def get_metadata(self):
         return cbint.utils.feed.generate_feed(self.name, summary="Bluecoat Malware Analysis Appliance Detonation",
-                        tech_data="There are no requirements to share any data with Carbon Black to use this feed.",
-                        provider_url="http://www.bluecoat.com",
-                        icon_path='/usr/share/cb/integrations/bluecoat/bluecoat-logo.png',
-                        display_name="Bluecoat", category="Connectors")
+                                              tech_data="There are no requirements to share any data with Carbon Black to use this feed.",
+                                              provider_url="http://www.bluecoat.com",
+                                              icon_path='/usr/share/cb/integrations/bluecoat/bluecoat-logo.png',
+                                              display_name="Bluecoat", category="Connectors")
 
     def validate_config(self):
         super(BluecoatConnector, self).validate_config()
@@ -240,6 +245,7 @@ class BluecoatConnector(DetonationDaemon):
         self.bluecoat_url = self.get_config_string("bluecoat_url", None)
         self.bluecoat_api_key = self.get_config_string("bluecoat_api_key", None)
         self.bluecoat_owner = self.get_config_string("bluecoat_owner", "admin")
+        self.bluecoat_min_score_threshold = int(self.get_config_string("min_score_threshold", "50"))
         return True
 
 
@@ -251,5 +257,5 @@ if __name__ == '__main__':
 
     config_path = os.path.join(my_path, "testing.conf")
     daemon = BluecoatConnector('bluecoattest', configfile=config_path, work_directory=temp_directory,
-                                logfile=os.path.join(temp_directory, 'test.log'), debug=True)
+                               logfile=os.path.join(temp_directory, 'test.log'), debug=True)
     daemon.start()
