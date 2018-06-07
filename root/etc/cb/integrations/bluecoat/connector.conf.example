@@ -20,6 +20,13 @@ bluecoat_owner=admin
 ;
 bluecoat_min_score_threshold=50
 
+;
+; Number of concurrent threads
+;
+; Default=4
+;
+bluecoat_num_threads=4
+
 
 ;
 ; listener_port

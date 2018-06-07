@@ -222,7 +222,9 @@ class BluecoatConnector(DetonationDaemon):
 
     @property
     def num_deep_scan_threads(self):
-        return 4
+        bluecoat_num_threads = self.get_config_integer("bluecoat_num_threads", 4)
+        log.info("Number of deep scan threads: {0}".format(bluecoat_num_threads))
+        return bluecoat_num_threads
 
     def get_provider(self):
         bluecoat_provider = BluecoatProvider(self.name,
